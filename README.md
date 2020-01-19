@@ -2,6 +2,11 @@
 
 ![Screenshot](screenshots/screenshot.png) 
 
+## TO BE DONE
+- [ ] Fix of multiple rendering
+- [ ] Preview
+- [ ] Save/Load/Export (with images) 
+
 ## Project setup
 ```
 npm install
