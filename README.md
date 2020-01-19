@@ -1,4 +1,6 @@
-# probatext
+# DataText
+
+![Screenshot](screenshots/screenshot.png) 
 
 ## Project setup
 ```
