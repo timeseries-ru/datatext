@@ -104,7 +104,12 @@ export default {
   methods: {
     async getDataBlock (text) {
       var code = text.trim()
-      var db = code.toLowerCase().trim().split(' ')[0]
+      const db_names = {
+        'sqlite': 'sqlite3',
+        'mysql': 'mysql',
+        'sqlite3': 'sqlite3'
+      }
+      var db = db_names[code.toLowerCase().trim().split(' ')[0]]
       if ((db !== 'sqlite3') && (db !== 'mysql')) return { error: 'Unsupported DB type' };
       let liner = (line, index) => line.trim().split(' ').filter(word => word.trim().length)[index];
       let connection
@@ -153,6 +158,9 @@ export default {
           }
         }
         let data = await connection.raw(codes[1]);
+        if (db !== 'sqlite3') {
+          data = data[0] // mysql return format
+        }
         return { data, plots }
       } catch (error) {
         return { error: error.toString() }
@@ -171,6 +179,7 @@ export default {
         }
       }
       let data = await this.getDataBlock(current)
+      
       if (index === this.blocks.length) this.blocks.push({})
       if (data.error || !data.data) {
         let node = document.createElement('div')
@@ -178,20 +187,24 @@ export default {
           node.innerHTML = '<span style="color: red">' + data.error + '</span>';
         else
           node.innerHTML = '<span style="color: black">No records</span>';
-        if (!this.blocks[index].errors)
-          this.blocks[index].errors = []
+        this.blocks[index].errors = []
         this.blocks[index].errors.push(this.mirror.doc.addLineWidget(
           this.mirror.doc.getLineHandle(line), node
         ))
         this.blocks[index].code = current
         return
       }
+
+      var node = document.createElement('div')
+      this.$refs.nodes.appendChild(node)
+
+      if (this.blocks[index].widget) {
+        this.blocks[index].widget.node.remove();
+        this.blocks[index].widget.clear();
+      }
+        
       for (var plot of data.plots || []) {
         if (!plot.type) continue
-        var counter = parseInt(this.$refs.nodes.children.length) || 0 + 1
-        var node = document.createElement('div')
-        node.id = "#node-" + counter.toString()
-        this.$refs.nodes.appendChild(node)
         var component 
         var chart
         const type = plot.type.toLowerCase()
@@ -199,7 +212,10 @@ export default {
         if (keys.length < 2) continue;
         if (!plot.x) plot.x = keys[0]
         if (!plot.y) plot.y = keys[1]
-        if (!plot.group && keys.length > 2) plot.group = keys[2]
+
+        var inner = document.createElement('div')
+        node.appendChild(inner)
+        
         if (plot.group) {
           chart = []
           const groups = new Set(data.data.map(entry => entry[plot.group]))
@@ -235,29 +251,29 @@ export default {
           }
         }
         if (type === 'lines') {
-          component = new (LineChart(chart, plot.x, plot.y))().$mount(node)
+          component = new (LineChart(chart, plot.x, plot.y))().$mount(inner)
         } else if (type === 'bars') {
-          component = new (BarChart(chart, plot.x, plot.y))().$mount(node)
+          component = new (BarChart(chart, plot.x, plot.y))().$mount(inner)
         } else if (type === 'scatter') {
-          component = new (ScatterChart(chart, plot.x, plot.y))().$mount(node)
+          component = new (ScatterChart(chart, plot.x, plot.y))().$mount(inner)
         }
         if (!component) {
-          node.remove()
+          inner.remove()
           continue
         }
-        this.$nextTick(() => {
-          this.blocks[index].widget = this.mirror.doc.addLineWidget(
-            this.mirror.doc.getLineHandle(line), component.$el
-          )
-          if (this.blocks[index].errors)
-          for (let error of this.blocks[index].errors) {
-            error.node.remove();
-            error.clear();  
-          }
-          this.blocks[index].errors = []
-          this.blocks[index].code = current
-        })
       }
+      this.$nextTick(() => {
+        this.blocks[index].widget = this.mirror.doc.addLineWidget(
+          this.mirror.doc.getLineHandle(line), node
+        )
+        if (this.blocks[index].errors)
+        for (let error of this.blocks[index].errors) {
+          error.node.remove();
+          error.clear();
+        }
+        this.blocks[index].errors = []
+        this.blocks[index].code = current
+      })
     },
     checkBlocks () {
       let opened = false
