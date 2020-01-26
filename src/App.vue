@@ -11,6 +11,9 @@ import VueSimplemde from 'vue-simplemde'
 import Chartkick from 'vue-chartkick'
 import Chart from 'chart.js'
 
+import * as alasql from '../node_modules/alasql/dist/alasql.min.js'
+const csvParser = require('csv-parser')
+
 Vue.use(Chartkick.use(Chart))
 
 const LineChart = (chart, xtitle, ytitle) => Vue.extend({
@@ -107,29 +110,42 @@ export default {
       const db_names = {
         'sqlite': 'sqlite3',
         'mysql': 'mysql',
-        'sqlite3': 'sqlite3'
+        'sqlite3': 'sqlite3',
+        'csv': 'csv'
       }
       var db = db_names[code.toLowerCase().trim().split(' ')[0]]
-      if ((db !== 'sqlite3') && (db !== 'mysql')) return { error: 'Unsupported DB type' };
+      if ((db !== 'sqlite3') && (db !== 'mysql') && (db !== 'csv')) 
+        return { error: 'Unsupported DB type' };
       let liner = (line, index) => line.trim().split(' ').filter(word => word.trim().length)[index];
       let connection
-      let codes = code.split(';');
+      let codes = code.split(';')
+      let csvData = []
       try {
-        if (db === 'sqlite3' && !fs.existsSync(liner(codes[0], 1))) return {
-          error: 'Database not found'
-        };
-        connection = require('knex')({
-          'client': db,
-          connection: db !== 'sqlite3' ? {
-            host: liner(codes[0], 1),
-            database: liner(codes[0], 2),
-            user: liner(codes[0], 3),
-            password: liner(codes[0], 4)
-          } : {
-            filename: liner(codes[0], 1)
-          }, 
-          useNullAsDefault: db === 'sqlite3'
-        })
+        if (db !== 'csv') {
+          if (db === 'sqlite3' && !fs.existsSync(liner(codes[0], 1))) return {
+            error: 'Database not found'
+          };
+          connection = require('knex')({
+            'client': db,
+            connection: db !== 'sqlite3' ? {
+              host: liner(codes[0], 1),
+              database: liner(codes[0], 2),
+              user: liner(codes[0], 3),
+              password: liner(codes[0], 4)
+            } : {
+              filename: liner(codes[0], 1)
+            }, 
+            useNullAsDefault: db === 'sqlite3'
+          })
+        } else {
+          let objects = []
+          let stream = fs.createReadStream(liner(codes[0], 1)).pipe(csvParser())
+          await new Promise(resolve => {
+            stream.on('data', data => objects.push(data))
+            stream.on('end', resolve)
+          })
+          csvData = objects
+        }
       } catch (error) {
         return { error: error.toString() }
       }
@@ -157,9 +173,11 @@ export default {
             }
           }
         }
-        let data = await connection.raw(codes[1]);
-        if (db !== 'sqlite3') {
-          data = data[0] // mysql return format
+        let data = db === 'csv' ? 
+          await alasql.promise(codes[1].replace('  ', ' ').replace('from csv', 'from ?'), [csvData]) :
+          await connection.raw(codes[1]);
+        if (db === 'mysql') {
+          data = data[0]
         }
         return { data, plots }
       } catch (error) {
@@ -210,6 +228,9 @@ export default {
         const type = plot.type.toLowerCase()
         const keys = Object.keys(data.data[0])
         if (keys.length < 2) continue;
+        if (!plot.x && !plot.y && keys[2]) {
+          plot.group = keys[2]
+        }
         if (!plot.x) plot.x = keys[0]
         if (!plot.y) plot.y = keys[1]
 
