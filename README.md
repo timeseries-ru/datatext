@@ -7,7 +7,7 @@
 ## TO BE DONE
 - [X] Fix of multiple rendering
 - [X] CSV load with alasql
-- [ ] Previews
+- [X] Previews
 - [ ] Toolbar: New/Save/Load/Export (with images) 
 
 ## How to make a query and visualize it

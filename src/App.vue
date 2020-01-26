@@ -16,25 +16,25 @@ const csvParser = require('csv-parser')
 
 Vue.use(Chartkick.use(Chart))
 
-const LineChart = (chart, xtitle, ytitle) => Vue.extend({
+const LineChart = (charted, xtitle, ytitle) => Vue.extend({
   data () {
-    return { chart, xtitle, ytitle }
+    return { charted, xtitle, ytitle }
   },
-  template: `<line-chart class="padded" :data="chart" :xtitle="xtitle" :ytitle="ytitle"></line-chart>`
+  template: `<line-chart class="padded" :data="charted" :xtitle="xtitle" :ytitle="ytitle"></line-chart>`
 });
 
-const BarChart = (chart, xtitle, ytitle) => Vue.extend({
+const BarChart = (charted, xtitle, ytitle) => Vue.extend({
   data () {
-    return { chart, xtitle, ytitle }
+    return { charted, xtitle, ytitle }
   },
-  template: `<column-chart class="padded" :data="chart" :xtitle="xtitle" :ytitle="ytitle"></column-chart>`
+  template: `<column-chart class="padded" :data="charted" :xtitle="xtitle" :ytitle="ytitle"></column-chart>`
 });
 
-const ScatterChart = (chart, xtitle, ytitle) => Vue.extend({
+const ScatterChart = (charted, xtitle, ytitle) => Vue.extend({
   data () {
-    return { chart, xtitle, ytitle }
+    return { charted, xtitle, ytitle }
   },
-  template: `<scatter-chart class="padded" :data="chart" :xtitle="xtitle" :ytitle="ytitle"></scatter-chart>`
+  template: `<scatter-chart class="padded" :data="charted" :xtitle="xtitle" :ytitle="ytitle"></scatter-chart>`
 });
 
 var fs = require('fs'); 
@@ -220,7 +220,8 @@ export default {
         this.blocks[index].widget.node.remove();
         this.blocks[index].widget.clear();
       }
-        
+      
+      let components = []
       for (var plot of data.plots || []) {
         if (!plot.type) continue
         var component 
@@ -281,8 +282,10 @@ export default {
         if (!component) {
           inner.remove()
           continue
-        }
+        }        
+        components.push(component.$root.$children[0].chart)
       }
+      this.blocks[index].components = components
       this.$nextTick(() => {
         this.blocks[index].widget = this.mirror.doc.addLineWidget(
           this.mirror.doc.getLineHandle(line), node
@@ -317,7 +320,30 @@ export default {
       }
     },
     previewRender(content) {
-      return this.$refs.editor.simplemde.markdown(content)
+      let original = content
+      let opened = false
+      let current = ''
+      let counter = 0
+      for (let index = 0; index < this.mirror.doc.lineCount(); ++index) {
+        var text = this.mirror.doc.getLine(index) + '\n'
+        if (text.trim() === '```') {
+          if (opened) {
+            let images = ''
+            for (let component of this.blocks[counter].components) {
+              images += '![](' + component.chart.toBase64Image() + ')\n'
+            }
+            original = original.replace(current, images)
+            ++counter
+          }
+          opened = !opened
+          current = ''
+          continue
+        }
+        if (opened) {
+          current += text
+        }
+      }
+      return this.$refs.editor.simplemde.markdown(original.replace(/```/g, ''))
     }
   }
 }
