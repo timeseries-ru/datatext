@@ -38,6 +38,7 @@ const ScatterChart = (charted, xtitle, ytitle) => Vue.extend({
 });
 
 var fs = require('fs'); 
+const { dialog } = require('electron').remote;
 
 export default {
   name: 'app',
@@ -62,30 +63,74 @@ export default {
           '|',
           {
             name: 'new',
-            // action: function customFunction(editor) {
-            // },
+            action: function customFunction(editor) {
+              const result = dialog.showMessageBoxSync({
+                type: "question",
+                message: "All unsaved data will be lost. Proceed?",
+                buttons: ["Create new", "Cancel"]
+              })
+              if (result === 0) {
+                editor.value('');
+              }
+            },
             className: 'fa fa-plus',
             title: 'New Markdown'
           },
           {
             name: 'load',
-            // action: function customFunction(editor) {
-            // },
+            action: function customFunction(editor) {
+              var options = {
+                title: "Open file",
+                buttonLabel: "Load",
+                filters: [
+                  {name: 'md', extensions: ['md',]},
+                  {name: 'All Files', extensions: ['*']}
+                ]
+              }
+              dialog.showOpenDialog(options, result => {
+                if (result)
+                  editor.value(fs.readFileSync(result[0], 'utf-8'));
+              })
+            },
             className: 'fa fa-file',
             title: 'Open Markdown'
           },
           {
             name: 'save',
-            // action: function customFunction(editor) {
-            // },
+            action: function customFunction(editor) {
+              var options = {
+                title: "Save file",
+                defaultPath: "content.md",
+                buttonLabel: "Save",
+                filters: [
+                  {name: 'md', extensions: ['md',]},
+                  {name: 'All Files', extensions: ['*']}
+                ]
+              }
+              dialog.showSaveDialog(options, filename => {
+                fs.writeFileSync(filename, editor.value(), 'utf-8');
+              })
+            },
             className: 'fa fa-save',
             title: 'Save Markdown'
           },
           '|',
           {
             name: 'Export',
-            // action: function customFunction(editor) {
-            // },
+            action: editor => {
+              var options = {
+                title: "Export file",
+                defaultPath: "content.html",
+                buttonLabel: "Save",
+                filters: [
+                  {name: 'html', extensions: ['html',]},
+                  {name: 'All Files', extensions: ['*']}
+                ]
+              }
+              dialog.showSaveDialog(options, filename => {
+                fs.writeFileSync(filename, this.previewRender(editor.value()), 'utf-8');
+              })
+            },
             className: 'fa fa-download',
             title: 'Export with images'
           }
@@ -343,7 +388,8 @@ export default {
           current += text
         }
       }
-      return this.$refs.editor.simplemde.markdown(original.replace(/```/g, ''))
+      const styles = '<style>img { display: block; margin: 5px auto; }</style>'
+      return styles + this.$refs.editor.simplemde.markdown(original.replace(/```/g, ''))
     }
   }
 }

@@ -1,14 +1,12 @@
 # DataText
 
-***Under development! Not ready yet.***
+Markdown editor, based on `simplemde`, with code blocks interpreted as SQL queries.
+Features:
+1. Connects to MySQL, SQLite and is able to query CSV with SQL.
+2. Three types of visualizations: bar charts, scatter plots and line charts.
+3. Export to HTML with base64-images.
 
 ![Screenshot](screenshots/screenshot.png) 
-
-## TO BE DONE
-- [X] Fix of multiple rendering
-- [X] CSV load with alasql
-- [X] Previews
-- [ ] Toolbar: New/Save/Load/Export (with images) 
 
 ## How to make a query and visualize it
 
