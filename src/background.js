@@ -19,9 +19,11 @@ function createWindow () {
   // Create the browser window.
   win = new BrowserWindow({ width: 1024, height: 768, webPreferences: {
     nodeIntegration: true
-  } })
+  }, show: false })
 
-  win.maximize()
+  win.on('ready-to-show', () => {
+    win.maximize();
+  })
 
   if (process.env.WEBPACK_DEV_SERVER_URL) {
     // Load the url of the dev server if in development mode

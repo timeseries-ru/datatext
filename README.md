@@ -6,7 +6,7 @@ Features:
 2. Three types of visualizations: bar charts, scatter plots and line charts.
 3. Export to HTML with base64-images.
 
-![Screenshot](screenshots/screenshot.png) 
+![Screenshot](screenshots/screenshot.png)
 
 ## How to make a query and visualize it
 
@@ -28,8 +28,8 @@ scatter diameter, shucked;
 Example with CSV (using `alasql`) and you always have to set table as simply `csv`:
 ```
 csv data/abalone.csv;
-select sum(cast (diameter as float)) as diameter, sex from csv where shucked > 0.5 group by sex;
-bars sex, diameter;
+select avg(cast (diameter as float)) as mean_diameter, sex from csv where shucked > 0.5 group by sex;
+bars sex, mean_diameter;
 ```
 
 > CSV data must be comma-separated with header columns
@@ -37,7 +37,7 @@ bars sex, diameter;
 0. Lines should be separated by `;`,
 1. First line should be connection information (examples are self-explanatory), only csv, sqlite and mysql are supported for now,
 2. Second line should be `select` query with at least two columns to fetch. Or three columns, if you need to group your data on chart (you can use more thant 2-3, if you want to show more than one diagram),
-3. Third and further lines are visualization types: `scatter`, `lines` or `bars`. When you don't provide fields, it takes first column as X axis, second as Y axis, and third as grouping (if present). You may specify other order, for example `scatter column_2, column_1` or `lines column_3, column_2, column_1`, where `column_*` - is the name of the fetched fields.
+3. Third and further lines are visualization types: `scatter`, `lines` or `bars`. When you don't provide fields, it takes first column as X axis, second as Y axis, and third as grouping (if it presents). You may specify other order, for example `scatter column_2, column_1` or `lines column_3, column_2, column_1`, where `column_*` - is the name of the columns to be selected.
 
 
 ## Project setup
@@ -54,4 +54,3 @@ npm run electron:serve
 ```
 npm run electron:build
 ```
-

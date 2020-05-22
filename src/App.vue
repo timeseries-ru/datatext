@@ -14,6 +14,12 @@ import Chart from 'chart.js'
 import * as alasql from '../node_modules/alasql/dist/alasql.min.js'
 const csvParser = require('csv-parser')
 
+// require to not optimize by builder
+/* eslint-disable no-unused-vars */
+const sqlite_requirement = require('sqlite3')
+const mysql_requirement = require('mysql')
+/* eslint-enable no-unused-vars */
+
 Vue.use(Chartkick.use(Chart))
 
 const LineChart = (charted, xtitle, ytitle) => Vue.extend({
@@ -37,7 +43,7 @@ const ScatterChart = (charted, xtitle, ytitle) => Vue.extend({
   template: `<scatter-chart class="padded" :data="charted" :xtitle="xtitle" :ytitle="ytitle"></scatter-chart>`
 });
 
-var fs = require('fs'); 
+var fs = require('fs');
 const { dialog } = require('electron').remote;
 
 export default {
@@ -128,7 +134,7 @@ export default {
                 ]
               }
               dialog.showSaveDialog(options, filename => {
-                fs.writeFileSync(filename, this.previewRender(editor.value()), 'utf-8');
+                fs.writeFileSync(filename, this.previewRender(editor.value(), null, true), 'utf-8');
               })
             },
             className: 'fa fa-download',
@@ -159,7 +165,7 @@ export default {
         'csv': 'csv'
       }
       var db = db_names[code.toLowerCase().trim().split(' ')[0]]
-      if ((db !== 'sqlite3') && (db !== 'mysql') && (db !== 'csv')) 
+      if ((db !== 'sqlite3') && (db !== 'mysql') && (db !== 'csv'))
         return { error: 'Unsupported DB type' };
       let liner = (line, index) => line.trim().split(' ').filter(word => word.trim().length)[index];
       let connection
@@ -179,7 +185,7 @@ export default {
               password: liner(codes[0], 4)
             } : {
               filename: liner(codes[0], 1)
-            }, 
+            },
             useNullAsDefault: db === 'sqlite3'
           })
         } else {
@@ -218,7 +224,7 @@ export default {
             }
           }
         }
-        let data = db === 'csv' ? 
+        let data = db === 'csv' ?
           await alasql.promise(codes[1].replace('  ', ' ').replace('from csv', 'from ?'), [csvData]) :
           await connection.raw(codes[1]);
         if (db === 'mysql') {
@@ -227,14 +233,14 @@ export default {
         return { data, plots }
       } catch (error) {
         return { error: error.toString() }
-      }      
+      }
     },
     async processBlock (index, current, line) {
       if (index < this.blocks.length) {
         if (this.blocks[index].code === current) return;
         for (let error of this.blocks[index].errors || []) {
           error.node.remove();
-          error.clear();  
+          error.clear();
         }
         if (this.blocks[index].widget) {
           this.blocks[index].widget.node.remove();
@@ -242,7 +248,7 @@ export default {
         }
       }
       let data = await this.getDataBlock(current)
-      
+
       if (index === this.blocks.length) this.blocks.push({})
       if (data.error || !data.data) {
         let node = document.createElement('div')
@@ -265,11 +271,11 @@ export default {
         this.blocks[index].widget.node.remove();
         this.blocks[index].widget.clear();
       }
-      
+
       let components = []
       for (var plot of data.plots || []) {
         if (!plot.type) continue
-        var component 
+        var component
         var chart
         const type = plot.type.toLowerCase()
         const keys = Object.keys(data.data[0])
@@ -282,7 +288,7 @@ export default {
 
         var inner = document.createElement('div')
         node.appendChild(inner)
-        
+
         if (plot.group) {
           chart = []
           const groups = new Set(data.data.map(entry => entry[plot.group]))
@@ -327,7 +333,7 @@ export default {
         if (!component) {
           inner.remove()
           continue
-        }        
+        }
         components.push(component.$root.$children[0].chart)
       }
       this.blocks[index].components = components
@@ -353,7 +359,7 @@ export default {
         if (text.trim() === '```') {
           if (opened) {
             this.processBlock(counter, current, index);
-            ++counter            
+            ++counter
           }
           opened = !opened
           current = ''
@@ -364,7 +370,7 @@ export default {
         }
       }
     },
-    previewRender(content) {
+    previewRender(content, element, add_styles) {
       let original = content
       let opened = false
       let current = ''
@@ -388,15 +394,27 @@ export default {
           current += text
         }
       }
-      const styles = '<style>img { display: block; margin: 5px auto; }</style>'
-      return styles + this.$refs.editor.simplemde.markdown(original.replace(/```/g, ''))
+      const styles = `
+        <style>
+          * { margin: 0; padding: 0; }
+          body { width: 80%; background: #fefefe; margin: 10px auto; }
+          img { display: block; margin: 5px auto; max-width: 100%; }
+          p {
+            padding: 10px 0;
+          }
+        </style>
+      `
+      const rendered = this.$refs.editor.simplemde.markdown(original.replace(/```/g, ''))
+      if (!add_styles)
+        return rendered
+      return styles + rendered
     }
   }
 }
 </script>
 
 <style>
-@import '~typeface-roboto/index.css';  
+@import '~typeface-roboto/index.css';
 html, body {
   margin: 0;
   font-family: Roboto !important;
